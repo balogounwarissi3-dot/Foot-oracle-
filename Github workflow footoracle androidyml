@@ -1,0 +1,74 @@
+Voici le contenu à copier-coller dans .github/workflows/FootOracle_Android_Build.yml de votre dépôt GitHub :
+name: Construire APK Foot Oracle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Préparer le projet (dossiers ou ZIP à la racine du dépôt)
+        run: |
+          if [ -d FootOracle_Android ]; then
+            ROOT="$PWD"
+          else
+            ZIP=$(ls FootOracle_Projet_Complet*.zip 2>/dev/null | head -n 1)
+            if [ -z "$ZIP" ]; then
+              echo "ERREUR : ni dossier FootOracle_Android/ ni FootOracle_Projet_Complet*.zip à la racine du dépôt."
+              ls -la
+              exit 1
+            fi
+            echo "Archive utilisée : $ZIP"
+            unzip -q "$ZIP" -d extracted
+            GRADLE_FILE=$(find extracted -maxdepth 4 \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
+            if [ -z "$GRADLE_FILE" ]; then echo "ERREUR : settings.gradle introuvable dans l'archive."; exit 1; fi
+            ANDROID_DIR=$(dirname "$GRADLE_FILE")
+            ROOT=$(cd "$ANDROID_DIR/.." && pwd)
+          fi
+          echo "ROOT=$ROOT" >> "$GITHUB_ENV"
+          echo "Racine du projet : $ROOT"
+
+      - name: Tests moteur Python
+        run: cd "$ROOT/python" && python3 -m unittest discover -s tests
+
+      - name: Tests moteur JavaScript et interface
+        run: cd "$ROOT/FootOracle_Android" && node --test tests/engine.test.js tests/ui_smoke.test.js
+
+      - name: Installer Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Installer Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Installer les composants Android
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Installer Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Construire l'APK debug
+        run: gradle -p "$ROOT/FootOracle_Android" assembleDebug --stacktrace
+
+      - name: Publier l'APK à télécharger
+        uses: actions/upload-artifact@v4
+        with:
+          name: FootOracle-APK
+          path: ${{ env.ROOT }}/FootOracle_Android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+J'ai seulement modifié la recherche de settings.gradle pour qu'elle accepte aussi settings.gradle.kts. Le reste est identique à votre fichier.
+Pour l'utiliser :
+Sur GitHub, créez le fichier .github/workflows/FootOracle_Android_Build.yml et collez le texte.
+Allez dans l'onglet Actions, choisissez Construire APK Foot Oracle, puis Run workflow.
+Une fois terminé, téléchargez l'APK dans la section Artifacts (FootOracle-APK).
