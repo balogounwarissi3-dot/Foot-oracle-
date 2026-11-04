@@ -26,9 +26,13 @@ jobs:
             fi
             echo "Archive utilisée : $ZIP"
             unzip -q "$ZIP" -d extracted
-            GRADLE_FILE=$(find extracted -maxdepth 8 \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
+            find extracted -name "*.zip" | while read -r Z; do
+              echo "ZIP interne : $Z"
+              unzip -q "$Z" -d "$(dirname "$Z")/interne"
+            done
+            GRADLE_FILE=$(find extracted -maxdepth 10 \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
             if [ -z "$GRADLE_FILE" ]; then
-              echo "ERREUR : settings.gradle introuvable. Contenu du ZIP :"
+              echo "ERREUR : settings.gradle introuvable. Contenu :"
               find extracted | head -80
               exit 1
             fi
