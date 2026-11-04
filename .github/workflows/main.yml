@@ -56,8 +56,11 @@ jobs:
 
       - name: Installer les composants Android
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Installer Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
